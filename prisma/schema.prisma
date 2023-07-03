@@ -11,10 +11,30 @@ datasource db {
     relationMode = "prisma"
 }
 
-model Example {
-    id        String   @id @default(cuid())
+model Tweet {
+    id        String   @id @default(uuid())
+    userId    String
+    content   String
     createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+    updatedAt DateTime @default(now())
+
+    // every tweet has a user
+    user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+    likes Like[]
+
+    @@index([userId])
+}
+
+model Like {
+    userId  String
+    tweetId String
+    user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+    tweet   Tweet  @relation(fields: [tweetId], references: [id], onDelete: Cascade)
+
+    // make it unique, so that one tweet can have only one like from the same user
+    @@id([userId, tweetId])
+    @@index([userId])
+    @@index([tweetId])
 }
 
 // Necessary for Next auth
@@ -55,6 +75,12 @@ model User {
     image         String?
     accounts      Account[]
     sessions      Session[]
+
+    // Non next-auth
+    tweets    Tweet[]
+    likes     Like[]
+    followers User[]  @relation(name: "Followers")
+    follows   User[]  @relation(name: "Followers")
 }
 
 model VerificationToken {
