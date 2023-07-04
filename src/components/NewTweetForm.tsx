@@ -43,7 +43,7 @@ function Form() {
   if (session.status !== "authenticated") return;
 
   return (
-    <form className="flex flex-col gap-2 px-4">
+    <form className="flex flex-col gap-2 border-b px-4">
       <div className="flex gap-4">
         <ProfileImage src={session.data?.user?.image} />
         <textarea
@@ -51,7 +51,7 @@ function Form() {
           style={{ height: 0 }}
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
-          className="flex-grow resize-none overflow-hidden border-2 border-solid border-sky-500 p-4 text-lg outline-none"
+          className="flex-grow resize-none overflow-hidden p-4 text-lg outline-none"
           placeholder="What's happening?"
         ></textarea>
       </div>
