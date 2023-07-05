@@ -1,3 +1,7 @@
-export default function InfiniteTweetList({ tweets }: any) {
-  return <div>{tweets}</div>;
+export default function InfiniteTweetList() {
+  return (
+    <div>
+      <h1>Tweet</h1>
+    </div>
+  );
 }

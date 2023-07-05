@@ -9,15 +9,15 @@ const Home: NextPage = () => {
         <h1 className="mb-2 px-4 text-lg font-bold">Home</h1>
       </header>
       <NewTweetForm />
-      <RecetTWeets />
+      {/* <RecetTWeets /> */}
     </>
   );
 };
 
-function RecetTWeets() {
-  const tweets: any = [];
+// function RecetTWeets() {
+//   const tweets: any = [];
 
-  return <InfiniteTweetList tweets={tweets} />;
-}
+//   return <InfiniteTweetList tweets={tweets} />;
+// }
 
 export default Home;
