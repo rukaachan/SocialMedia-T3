@@ -16,7 +16,6 @@ model Tweet {
     userId    String
     content   String
     createdAt DateTime @default(now())
-    updatedAt DateTime @default(now())
 
     // every tweet has a user
     user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)

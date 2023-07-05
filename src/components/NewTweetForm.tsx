@@ -1,7 +1,9 @@
 import { useSession } from "next-auth/react";
 import Button from "./Button";
 import ProfileImage from "./ProfileImage";
+import type { FormEvent } from "react";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { api } from "~/utils/api";
 
 function updateTextAreaSize(textArea?: HTMLTextAreaElement) {
   if (textArea == null) return;
@@ -19,7 +21,7 @@ function updateTextAreaSize(textArea?: HTMLTextAreaElement) {
 export default function NewTweetForm() {
   const session = useSession();
 
-  if (session.status !== "authenticated") return;
+  if (session.status !== "authenticated") return null;
 
   return <Form />;
 }
@@ -40,10 +42,27 @@ function Form() {
     updateTextAreaSize(textAreaRef.current);
   }, [inputValue]);
 
+  // fr manage api, are they success or not
+  const createTweet = api.tweet.create.useMutation({
+    // will take param newTweet
+    onSuccess: (newTweet) => {
+      console.log(newTweet);
+      setInputValue("");
+    },
+  });
+
+  // handle on submit
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+
+    // mutate with content of value from inputValue
+    createTweet.mutate({ content: inputValue });
+  }
+
   if (session.status !== "authenticated") return;
 
   return (
-    <form className="flex flex-col gap-2 border-b px-4">
+    <form className="flex flex-col gap-2 border-b px-4" onClick={handleSubmit}>
       <div className="flex gap-4">
         <ProfileImage src={session.data?.user?.image} />
         <textarea
