@@ -51,8 +51,12 @@ export const tweetRouter = createTRPCRouter({
         },
       });
       let nextCursor: typeof cursor | undefined;
+
       if (data.length > limit) {
+        // in here doing some delete array last data
+        // and if not being null, will be stored in a variable
         const nextItem = data.pop();
+
         if (nextItem != null) {
           nextCursor = { id: nextItem.id, createdAt: nextItem.createdAt };
         }
