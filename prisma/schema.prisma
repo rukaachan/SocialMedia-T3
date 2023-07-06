@@ -21,6 +21,10 @@ model Tweet {
     user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
     likes Like[]
 
+    // for every tweet, must be uniqu (createdAt and id)
+    // so that when there is multi user tweeting, 
+    // they don't crash in one createdAt time
+    @@unique([createdAt, id])
     @@index([userId])
 }
 
