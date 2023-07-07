@@ -28,10 +28,13 @@ export const tweetRouter = createTRPCRouter({
          * the first 10 items to display on first page
          */
         take: limit + 1,
-        cursor: cursor ? { createdAt_id: cursor } : undefined, // if cursor is not null, will be shown some tweet
+        cursor: cursor ? { createdAt_id: cursor } : undefined,
+        // some error here, because cant select two orderBy
         orderBy: [
           {
             createdAt: "desc",
+          },
+          {
             id: "desc",
           },
         ],
@@ -54,21 +57,22 @@ export const tweetRouter = createTRPCRouter({
 
       if (data.length > limit) {
         // in here doing some delete array last data
-        // and if not being null, will be stored in a variable
         const nextItem = data.pop();
 
+        // and if not being null, will be stored in a variable
         if (nextItem != null) {
           nextCursor = { id: nextItem.id, createdAt: nextItem.createdAt };
         }
       }
 
+      // return data for frontEnd
       return {
         tweets: data.map((tweet) => {
           return {
             id: tweet.id,
             content: tweet.content,
             createdAt: tweet.createdAt,
-            likesCount: tweet._count.likes,
+            likeCount: tweet._count.likes,
             user: tweet.user,
             likedByMe: tweet.likes?.length > 0,
           };
