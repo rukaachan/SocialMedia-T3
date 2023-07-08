@@ -20,7 +20,6 @@ export const tweetRouter = createTRPCRouter({
       // To view tweets that you have not liked, they will be shown.
       const currentUserId = ctx.session?.user.id;
 
-      // doing with query
       const data = await ctx.prisma.tweet.findMany({
         /**
          * if want to display 10 items per page
@@ -91,5 +90,32 @@ export const tweetRouter = createTRPCRouter({
           userId: ctx.session.user.id,
         },
       });
+    }),
+  // toggleLike EndPoint TRPC
+  toggleLike: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ input: { id }, ctx }) => {
+      // declare variable object, that have two properties
+      const data = { tweetId: id, userId: ctx.session.user.id };
+
+      const exisitingLike = await ctx.prisma.like.findUnique({
+        where: {
+          userId_tweetId: data, // and put initialization variabel data
+        },
+      });
+
+      if (exisitingLike == null) {
+        await ctx.prisma.like.create({
+          data,
+        });
+        return { addedLike: true };
+      } else {
+        await ctx.prisma.like.delete({
+          where: {
+            userId_tweetId: data,
+          },
+        });
+        return { addedLike: false };
+      }
     }),
 });
