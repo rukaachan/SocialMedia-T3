@@ -42,7 +42,7 @@ function Form() {
     updateTextAreaSize(textAreaRef.current);
   }, [inputValue]);
 
-  // fr manage api, are they success or not
+  // for manage api, are they success or not
   const createTweet = api.tweet.create.useMutation({
     // will take param newTweet
     onSuccess: (newTweet) => {
@@ -54,6 +54,8 @@ function Form() {
   // handle on submit
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
+
+    if (!inputValue.trim()) return;
 
     // mutate with content of value from inputValue
     createTweet.mutate({ content: inputValue });

@@ -22,7 +22,7 @@ type InfiniteTweetListProps = {
   tweets?: Tweet[];
 };
 
-// set-up for InfiniteTweetList
+// set-up for InfiniteTweetList, and props
 export default function InfiniteTweetList({
   tweets,
   isError,
@@ -30,13 +30,27 @@ export default function InfiniteTweetList({
   hasMore,
   fetchNewTweets,
 }: InfiniteTweetListProps) {
-  if (isLoading) return <h1>Loading......</h1>;
-  if (isError) return <h1>Error....</h1>;
+  if (isLoading)
+    return (
+      <h1 className="my-4 text-center text-2xl text-gray-500">Loading......</h1>
+    );
+  if (isError)
+    return (
+      <h1 className="my-4 text-center text-2xl text-gray-500">Error....</h1>
+    );
   if (!tweets || tweets.length === 0) {
     return (
       <h2 className="my-4 text-center text-2xl text-gray-500">No Tweets</h2>
     );
   }
+
+  //
+  /**
+   * Return with components InfiniteScroll and props
+   *
+   * mapping data {tweets.map((tweet)}
+   * and spread property from object tweet
+   */
   return (
     <ul>
       <InfiniteScroll
@@ -53,7 +67,7 @@ export default function InfiniteTweetList({
   );
 }
 
-// format date
+// format dateTime
 const dateTimeFormatter = new Intl.DateTimeFormat(undefined, {
   dateStyle: "short",
 });
@@ -80,9 +94,10 @@ function TweetCard({
           >
             {user.name}
           </Link>
-          <span className="text-gray-500">-</span>
           <span className="text-gray-500">
-            {dateTimeFormatter.format(createdAt)}
+            <span className="text-gray-500">
+              {dateTimeFormatter.format(createdAt)}
+            </span>
           </span>
         </div>
         <p className="whitespace-pre-wrap">{content}</p>
@@ -100,6 +115,11 @@ type HeartButtonProps = {
 function HeartButton({ likedByMe, likeCount }: HeartButtonProps) {
   // cek session user, if there login or no
   const session = useSession();
+
+  /**
+   * checks if "likedByMe" is true or false.
+   * If "session" is null, shows "VscHeart"; otherwise, displays "VscHeartFilled".
+   */
   const HeartIcon = likedByMe ? VscHeartFilled : VscHeart;
 
   if (session == null)
@@ -112,7 +132,8 @@ function HeartButton({ likedByMe, likeCount }: HeartButtonProps) {
 
   return (
     <button
-      className={`group ml-2 flex items-center gap-1 self-start transition-colors duration-200 ${
+      className={`group flex items-center gap-1 self-start transition-colors duration-200 ${
+        // when hover will be text-red, and if not will be text-gray
         likedByMe
           ? "text-red-500"
           : "text-gray-500 hover:text-red-500 focus-visible:text-red-500"
