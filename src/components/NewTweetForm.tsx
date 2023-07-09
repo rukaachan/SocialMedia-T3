@@ -37,6 +37,8 @@ function Form() {
     textAreaRef.current = textArea;
   }, []);
 
+  const trcpcUtils = api.useContext();
+
   // will render if there triggerd in inputValue
   useLayoutEffect(() => {
     updateTextAreaSize(textAreaRef.current);
@@ -46,8 +48,37 @@ function Form() {
   const createTweet = api.tweet.create.useMutation({
     // will take param newTweet
     onSuccess: (newTweet) => {
-      console.log(newTweet);
+      console.log(newTweet); // see value newTweet that from state inputValue
       setInputValue("");
+
+      // checking session
+      if (session.status !== "authenticated") return;
+
+      trcpcUtils.tweet.infiniteFeed.setInfiniteData({}, (oldData) => {
+        if (oldData == null || oldData.pages[0] == null) return;
+
+        const newCatchTweet = {
+          ...newTweet,
+          likeCount: 0,
+          likedByMe: false,
+          user: {
+            id: session.data.user.id,
+            name: session.data.user.name || null,
+            image: session.data.user.image || null,
+          },
+        };
+
+        return {
+          ...oldData,
+          pages: [
+            {
+              ...oldData.pages[0],
+              tweets: [newCatchTweet, ...oldData.pages[0].tweets],
+            },
+            ...oldData.pages.slice(1),
+          ],
+        };
+      });
     },
   });
 

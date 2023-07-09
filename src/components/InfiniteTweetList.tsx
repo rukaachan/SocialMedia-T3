@@ -45,7 +45,6 @@ export default function InfiniteTweetList({
     );
   }
 
-  //
   /**
    * Return with components InfiniteScroll and props
    *
@@ -82,7 +81,40 @@ function TweetCard({
   likeCount,
   likedByMe,
 }: Tweet) {
-  const toggleLike = api.tweet.toggleLike.useMutation();
+  const trpcUtils = api.useContext();
+
+  const toggleLike = api.tweet.toggleLike.useMutation({
+    onSuccess: ({ addedLike }) => {
+      const updateData: Parameters<
+        typeof trpcUtils.tweet.infiniteFeed.setInfiniteData
+      >[1] = (oldData) => {
+        if (oldData == null) return;
+
+        const countModifier = addedLike ? 1 : -1;
+
+        return {
+          ...oldData,
+          pages: oldData.pages.map((page) => {
+            return {
+              ...page,
+              tweets: page.tweets.map((tweet) => {
+                if (tweet.id == id) {
+                  return {
+                    ...tweet,
+                    likeCount: tweet.likeCount + countModifier,
+                    likedByMe: addedLike,
+                  };
+                }
+                return tweet;
+              }),
+            };
+          }),
+        };
+      };
+
+      trpcUtils.tweet.infiniteFeed.setInfiniteData({}, updateData);
+    },
+  });
 
   function handleToggleLike() {
     toggleLike.mutate({ id });
@@ -101,10 +133,9 @@ function TweetCard({
           >
             {user.name}
           </Link>
+          <span className="text-gray-500">-</span>
           <span className="text-gray-500">
-            <span className="text-gray-500">
-              {dateTimeFormatter.format(createdAt)}
-            </span>
+            {dateTimeFormatter.format(createdAt)}
           </span>
         </div>
         <p className="whitespace-pre-wrap">{content}</p>
