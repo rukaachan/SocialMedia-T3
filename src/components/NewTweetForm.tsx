@@ -54,9 +54,12 @@ function Form() {
       // checking session
       if (session.status !== "authenticated") return;
 
+      // for updating, with no reload after click heart
       trcpcUtils.tweet.infiniteFeed.setInfiniteData({}, (oldData) => {
+        // checking callback oldData
         if (oldData == null || oldData.pages[0] == null) return;
 
+        // catch the new tweet, and replace it
         const newCatchTweet = {
           ...newTweet,
           likeCount: 0,
@@ -68,6 +71,7 @@ function Form() {
           },
         };
 
+        // and doing some return for view
         return {
           ...oldData,
           pages: [
@@ -86,6 +90,7 @@ function Form() {
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
 
+    // do nothing if value empty
     if (!inputValue.trim()) return;
 
     // mutate with content of value from inputValue

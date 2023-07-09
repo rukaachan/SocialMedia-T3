@@ -85,13 +85,17 @@ function TweetCard({
 
   const toggleLike = api.tweet.toggleLike.useMutation({
     onSuccess: ({ addedLike }) => {
+      // accept Parameters with name oldData, that get it a second parameter of the setInfiniteFeed function.
       const updateData: Parameters<
         typeof trpcUtils.tweet.infiniteFeed.setInfiniteData
       >[1] = (oldData) => {
+        // Check if the oldData is null or undefined
         if (oldData == null) return;
 
+        // Determine the count modifier based on whether a like was added or removed
         const countModifier = addedLike ? 1 : -1;
 
+        // Update the oldData by mapping over the pages and tweets
         return {
           ...oldData,
           pages: oldData.pages.map((page) => {
@@ -111,7 +115,7 @@ function TweetCard({
           }),
         };
       };
-
+      // Call the function to update the infinite feed data
       trpcUtils.tweet.infiniteFeed.setInfiniteData({}, updateData);
     },
   });
