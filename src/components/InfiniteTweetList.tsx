@@ -50,18 +50,18 @@ export default function InfiniteTweetList({
    * and spread property from object tweet
    */
   return (
-    <ul>
-      <InfiniteScroll
-        dataLength={tweets.length}
-        next={fetchNewTweets}
-        hasMore={hasMore}
-        loader={<LoadingSpinner />}
-      >
+    <InfiniteScroll
+      dataLength={tweets.length}
+      next={fetchNewTweets}
+      hasMore={hasMore}
+      loader={<LoadingSpinner />}
+    >
+      <ul>
         {tweets.map((tweet) => {
           return <TweetCard key={tweet.id} {...tweet} />;
         })}
-      </InfiniteScroll>
-    </ul>
+      </ul>
+    </InfiniteScroll>
   );
 }
 
