@@ -48,7 +48,9 @@ function Form() {
   const createTweet = api.tweet.create.useMutation({
     // will take param newTweet
     onSuccess: (newTweet) => {
-      console.log(newTweet); // see value newTweet that from state inputValue
+      // see value newTweet that from state inputValue
+      // console.log(newTweet);
+
       setInputValue("");
 
       // checking session

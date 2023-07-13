@@ -9,7 +9,7 @@ import {
 } from "~/server/api/trpc";
 
 export const tweetRouter = createTRPCRouter({
-  // infiniteProfile
+  // infiniteProfile EndPoint TRPC
   infiteProfile: publicProcedure
     .input(
       z.object({
