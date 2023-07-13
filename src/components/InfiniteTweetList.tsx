@@ -115,6 +115,14 @@ function TweetCard({
       };
       // Call the function to update the infinite feed data
       trpcUtils.tweet.infiniteFeed.setInfiniteData({}, updateData);
+      trpcUtils.tweet.infiniteFeed.setInfiniteData(
+        { onlyFollowing: true },
+        updateData
+      );
+      trpcUtils.tweet.infiteProfile.setInfiniteData(
+        { userId: user.id },
+        updateData
+      );
     },
   });
 

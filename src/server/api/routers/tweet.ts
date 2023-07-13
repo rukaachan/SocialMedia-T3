@@ -9,6 +9,27 @@ import {
 } from "~/server/api/trpc";
 
 export const tweetRouter = createTRPCRouter({
+  // infiniteProfile
+  infiteProfile: publicProcedure
+    .input(
+      z.object({
+        userId: z.string(),
+        limit: z.number().optional(),
+        cursor: z.object({ id: z.string(), createdAt: z.date() }).optional(),
+      })
+    )
+    // doing with query
+    .query(
+      // Retrieves data for all users, regardless of whether they are being followed
+      async ({ input: { limit = 10, userId, cursor }, ctx }) => {
+        return await getInfiniteTweets({
+          limit,
+          ctx,
+          cursor,
+          whereClause: { userId }, // checking just one users tweet
+        });
+      }
+    ),
   // infiniteFeed EndPoint TRPC
   infiniteFeed: publicProcedure
     .input(
@@ -55,6 +76,7 @@ export const tweetRouter = createTRPCRouter({
         },
       });
     }),
+
   // toggleLike EndPoint TRPC
   toggleLike: protectedProcedure
     .input(z.object({ id: z.string() }))

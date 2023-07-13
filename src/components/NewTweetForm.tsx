@@ -100,7 +100,7 @@ function Form() {
   if (session.status !== "authenticated") return;
 
   return (
-    <form className="flex flex-col gap-2 border-b px-4" onClick={handleSubmit}>
+    <form className="flex flex-col gap-2 border-b px-4" onSubmit={handleSubmit}>
       <div className="flex gap-4">
         <ProfileImage src={session.data?.user?.image} />
         <textarea
