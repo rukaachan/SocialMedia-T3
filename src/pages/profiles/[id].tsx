@@ -50,7 +50,7 @@ const ProfilePage: NextPage<InferGetStaticPropsType<typeof getStaticProps>> = ({
   return (
     <>
       <Head>
-        <title>{`Twitter Clone ${profile.name}`}</title>
+        <title>{`${profile.name} / Tweeva`}</title>
       </Head>
       <header className="sticky top-0 z-10 flex items-center border-b bg-white px-4 py-2">
         <Link href=".." className="mr-2">
@@ -71,7 +71,7 @@ const ProfilePage: NextPage<InferGetStaticPropsType<typeof getStaticProps>> = ({
         </div>
         <FollowButton
           isFollowing={profile.isFollowing}
-          isLoading={toggleFollow.isLoading}
+          isLoading={toggleFollow.isPending}
           userId={id}
           onClick={() => toggleFollow.mutate({ userId: id })}
         />
@@ -101,7 +101,7 @@ function FollowButton({
   onClick: () => void;
 }) {
   const session = useSession();
-  if (session.status != "authenticated" || session.data.user.id === userId)
+  if (session.status !== "authenticated" || session.data.user.id === userId)
     return null;
 
   return (

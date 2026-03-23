@@ -2,21 +2,9 @@ import { useSession } from "next-auth/react";
 import Button from "./Button";
 import ProfileImage from "./ProfileImage";
 import type { FormEvent } from "react";
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { useState } from "react";
+import { useAutoResizeTextArea } from "~/hooks/useAutoResizeTextArea";
 import { api } from "~/utils/api";
-
-function updateTextAreaSize(textArea?: HTMLTextAreaElement) {
-  if (textArea == null) return;
-
-  /**
-   * If there is a textarea element:
-   * Set the initial height and make it dynamic
-   * The textarea will expand downwards using the scrollHeight property
-   */
-
-  textArea.style.height = "0";
-  textArea.style.height = `${textArea.scrollHeight}px`;
-}
 
 export default function NewTweetForm() {
   const session = useSession();
@@ -29,20 +17,9 @@ export default function NewTweetForm() {
 function Form() {
   const session = useSession();
   const [inputValue, setInputValue] = useState("");
-  const textAreaRef = useRef<HTMLTextAreaElement>();
-
-  // in here make it some callback function for updateTextAreaSize
-  const inputRef = useCallback((textArea: HTMLTextAreaElement) => {
-    updateTextAreaSize(textArea);
-    textAreaRef.current = textArea;
-  }, []);
+  const inputRef = useAutoResizeTextArea(inputValue);
 
   const trcpcUtils = api.useContext();
-
-  // will render if there triggerd in inputValue
-  useLayoutEffect(() => {
-    updateTextAreaSize(textAreaRef.current);
-  }, [inputValue]);
 
   // for manage api, are they success or not
   const createTweet = api.tweet.create.useMutation({

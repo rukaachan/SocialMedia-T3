@@ -1,4 +1,4 @@
-import InfiniteScroll from "react-infinite-scroll-component";
+import { useInfiniteScroll } from "~/hooks/useInfiniteScroll";
 import ProfileImage from "./ProfileImage";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -32,6 +32,12 @@ export default function InfiniteTweetList({
   hasMore,
   fetchNewTweets,
 }: InfiniteTweetListProps) {
+  const { loadMoreRef, isFetchingMore } = useInfiniteScroll({
+    fetchMore: fetchNewTweets,
+    hasMore,
+    rootMargin: "200px 0px",
+  });
+
   if (isLoading) return <LoadingSpinner />;
   if (isError)
     return (
@@ -43,25 +49,20 @@ export default function InfiniteTweetList({
     );
   }
 
-  /**
-   * Return with components InfiniteScroll and props
-   *
-   * mapping data {tweets.map((tweet)}
-   * and spread property from object tweet
-   */
   return (
-    <InfiniteScroll
-      dataLength={tweets.length}
-      next={fetchNewTweets}
-      hasMore={hasMore}
-      loader={<LoadingSpinner />}
-    >
+    <>
       <ul>
         {tweets.map((tweet) => {
           return <TweetCard key={tweet.id} {...tweet} />;
         })}
       </ul>
-    </InfiniteScroll>
+
+      {hasMore && (
+        <div ref={loadMoreRef} className="flex justify-center py-4">
+          {isFetchingMore && <LoadingSpinner />}
+        </div>
+      )}
+    </>
   );
 }
 
@@ -99,8 +100,8 @@ function TweetCard({
           pages: oldData.pages.map((page) => {
             return {
               ...page,
-              tweets: page.tweets.map((tweet) => {
-                if (tweet.id == id) {
+              tweets: page.tweets.map((tweet: Tweet) => {
+                if (tweet.id === id) {
                   return {
                     ...tweet,
                     likeCount: tweet.likeCount + countModifier,
@@ -151,7 +152,7 @@ function TweetCard({
         <p className="whitespace-pre-wrap">{content}</p>
         <HeartButton
           onClick={handleToggleLike}
-          isLoading={toggleLike.isLoading}
+          isLoading={toggleLike.isPending}
           likedByMe={likedByMe}
           likeCount={likeCount}
         />
@@ -192,6 +193,7 @@ function HeartButton({
 
   return (
     <button
+      type="button"
       disabled={isLoading}
       onClick={onClick}
       className={`group flex items-center gap-1 self-start transition-colors duration-200 ${

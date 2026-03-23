@@ -165,7 +165,7 @@ async function getInfiniteTweets({
 
   // return data for frontEnd
   return {
-    tweets: data.map((tweet) => {
+    tweets: data.map((tweet: (typeof data)[number]) => {
       return {
         id: tweet.id,
         content: tweet.content,
