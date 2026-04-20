@@ -8,12 +8,12 @@
  */
 
 import { initTRPC, TRPCError } from "@trpc/server";
-import { type CreateNextContextOptions } from "@trpc/server/adapters/next";
-import { type Session } from "next-auth";
 import superjson from "superjson";
 import { ZodError } from "zod";
-import { getServerAuthSession } from "~/server/auth";
-import { prisma } from "~/server/db";
+import {
+  createFetchServerContext,
+  createServerContext,
+} from "~/server/platform/context";
 
 /**
  * 1. CONTEXT
@@ -22,16 +22,6 @@ import { prisma } from "~/server/db";
  *
  * These allow you to access things when processing a request, like the database, the session, etc.
  */
-
-type CreateContextOptions = {
-  session: Session | null;
-  revalidateSGG:
-    | ((
-        urlPath: string,
-        opts?: { unstable_onlyGenerated?: boolean | undefined } | undefined
-      ) => Promise<void>)
-    | null;
-};
 
 /**
  * This helper generates the "internals" for a tRPC context. If you need to use it, you can export
@@ -43,13 +33,7 @@ type CreateContextOptions = {
  *
  * @see https://create.t3.gg/en/usage/trpc#-serverapitrpcts
  */
-export const createInnerTRPCContext = (opts: CreateContextOptions) => {
-  return {
-    session: opts.session,
-    revalidateSGG: opts.revalidateSGG,
-    prisma,
-  };
-};
+export const createInnerTRPCContext = createServerContext;
 
 /**
  * This is the actual context you will use in your router. It will be used to process every request
@@ -57,17 +41,7 @@ export const createInnerTRPCContext = (opts: CreateContextOptions) => {
  *
  * @see https://trpc.io/docs/context
  */
-export const createTRPCContext = async (opts: CreateNextContextOptions) => {
-  const { req, res } = opts;
-
-  // Get the session from the server using the getServerSession wrapper function
-  const session = await getServerAuthSession({ req, res });
-
-  return createInnerTRPCContext({
-    session,
-    revalidateSGG: res.revalidate,
-  });
-};
+export const createTRPCContext = createFetchServerContext;
 
 /**
  * 2. INITIALIZATION

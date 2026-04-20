@@ -1,13 +1,15 @@
+"use client";
+
 import Link from "next/link";
-import { useSession } from "next-auth/react";
-import { signIn, signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import IconHoverEffect from "./IconHoverEffect";
 import { VscAccount, VscHome, VscSignIn, VscSignOut } from "react-icons/vsc";
+import { authClient, useSession } from "~/lib/auth/client";
 
 export function SideNav() {
   const session = useSession();
-  const user = session.data?.user; // cek session user data
-  // console.log(user);
+  const router = useRouter();
+  const user = session.data?.user;
   return (
     <nav className="sticky top-0 px-2 py-4">
       <ul className="flex flex-col items-center gap-2 whitespace-nowrap">
@@ -37,7 +39,7 @@ export function SideNav() {
         )}
         {user == null ? (
           <li>
-            <button onClick={() => void signIn()}>
+            <Link href="/auth/sign-in">
               <IconHoverEffect>
                 <span className="flex items-center gap-4">
                   <VscSignIn className="h-8 w-8 fill-green-700" />
@@ -46,11 +48,22 @@ export function SideNav() {
                   </span>
                 </span>
               </IconHoverEffect>
-            </button>
+            </Link>
           </li>
         ) : (
           <li>
-            <button onClick={() => void signOut()}>
+            <button
+              type="button"
+              onClick={() =>
+                void authClient.signOut({
+                  fetchOptions: {
+                    onSuccess: () => {
+                      router.push("/");
+                    },
+                  },
+                })
+              }
+            >
               <IconHoverEffect>
                 <span className="flex items-center gap-4">
                   <VscSignOut className="h-8 w-8 fill-red-700" />

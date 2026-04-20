@@ -1,7 +1,9 @@
-import type { Prisma } from "@prisma/client";
-import type { inferAsyncReturnType } from "@trpc/server";
+import { and, desc, eq, lt, lte, or, sql } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import type { createTRPCContext } from "~/server/api/trpc";
+import { db, schemaReady } from "~/db";
+import { like, tweet, user, userFollower } from "~/db/schema";
+import { rateLimit, RATE_LIMITS } from "~/lib/ratelimit";
 import {
   createTRPCRouter,
   protectedProcedure,
@@ -9,172 +11,217 @@ import {
 } from "~/server/api/trpc";
 
 export const tweetRouter = createTRPCRouter({
-  // infiniteProfile EndPoint TRPC
   infiteProfile: publicProcedure
     .input(
       z.object({
-        userId: z.string(),
-        limit: z.number().optional(),
+        userId: z.string().min(1).max(100),
+        limit: z.number().min(1).max(50).optional(),
         cursor: z.object({ id: z.string(), createdAt: z.date() }).optional(),
       })
     )
-    // doing with query
-    .query(
-      // Retrieves data for all users, regardless of whether they are being followed
-      async ({ input: { limit = 10, userId, cursor }, ctx }) => {
-        return await getInfiniteTweets({
-          limit,
-          ctx,
-          cursor,
-          whereClause: { userId }, // checking just one users tweet
-        });
-      }
-    ),
-  // infiniteFeed EndPoint TRPC
+    .query(async ({ input: { limit = 10, userId, cursor }, ctx }) => {
+      return await getInfiniteTweets({
+        currentUserId: ctx.session?.user.id,
+        cursor,
+        limit,
+        userId,
+      });
+    }),
   infiniteFeed: publicProcedure
     .input(
       z.object({
-        // make object for EndPoint limit and cursor
         onlyFollowing: z.boolean().optional(),
-        limit: z.number().optional(),
+        limit: z.number().min(1).max(50).optional(),
         cursor: z.object({ id: z.string(), createdAt: z.date() }).optional(),
       })
     )
-    // doing with query
     .query(
-      // Retrieves data for all users, regardless of whether they are being followed
       async ({ input: { limit = 10, onlyFollowing = false, cursor }, ctx }) => {
-        const currentUserId = ctx.session?.user.id; // checking userId
         return await getInfiniteTweets({
-          limit,
-          ctx,
+          currentUserId: ctx.session?.user.id,
           cursor,
-          whereClause:
-            currentUserId == null || !onlyFollowing
-              ? undefined
-              : {
-                  // checks if a user has followers and returns true
-                  // if any of those followers have a specific user ID.
-                  user: {
-                    followers: {
-                      some: { id: currentUserId },
-                    },
-                  },
-                },
+          limit,
+          onlyFollowing,
         });
       }
     ),
-  // create EndPoint TRPC
   create: protectedProcedure
-    .input(z.object({ content: z.string() }))
-    // mutation: for make created and place it into server
-    .mutation(async ({ input: { content }, ctx }) => {
-      return await ctx.prisma.tweet.create({
-        data: {
-          content,
-          userId: ctx.session.user.id,
-        },
+    .input(z.object({ content: z.string().min(1).max(500) }))
+    .use(async ({ ctx, next }) => {
+      const rateLimitResult = await rateLimit({
+        key: `create-tweet-${ctx.session.user.id}`,
+        limit: RATE_LIMITS.CREATE_TWEET.limit,
+        window: RATE_LIMITS.CREATE_TWEET.window,
       });
-    }),
+      if (!rateLimitResult.success) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: `Rate limit exceeded. Try again in ${Math.ceil(
+            (rateLimitResult.resetAt - Date.now()) / 1000
+          )} seconds.`,
+        });
+      }
+      return next({ ctx });
+    })
+    .mutation(async ({ input: { content }, ctx }) => {
+      await schemaReady;
+      const createdAt = new Date();
+      const id = crypto.randomUUID();
 
-  // toggleLike EndPoint TRPC
+      await db.insert(tweet).values({
+        content,
+        createdAt: createdAt.toISOString(),
+        id,
+        userId: ctx.session.user.id,
+      });
+
+      return {
+        content,
+        createdAt,
+        id,
+        userId: ctx.session.user.id,
+      };
+    }),
   toggleLike: protectedProcedure
     .input(z.object({ id: z.string() }))
+    .use(async ({ ctx, next }) => {
+      const rateLimitResult = await rateLimit({
+        key: `toggle-like-${ctx.session.user.id}`,
+        limit: RATE_LIMITS.TOGGLE_LIKE.limit,
+        window: RATE_LIMITS.TOGGLE_LIKE.window,
+      });
+      if (!rateLimitResult.success) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: `Rate limit exceeded. Try again in ${Math.ceil(
+            (rateLimitResult.resetAt - Date.now()) / 1000
+          )} seconds.`,
+        });
+      }
+      return next({ ctx });
+    })
     .mutation(async ({ input: { id }, ctx }) => {
-      // declare variable object, that have two properties
+      await schemaReady;
       const data = { tweetId: id, userId: ctx.session.user.id };
-
-      const exisitingLike = await ctx.prisma.like.findUnique({
-        where: {
-          userId_tweetId: data, // and put initialization variabel data
-        },
+      const existingLike = await db.query.like.findFirst({
+        where: and(
+          eq(like.tweetId, data.tweetId),
+          eq(like.userId, data.userId)
+        ),
       });
 
-      if (exisitingLike == null) {
-        await ctx.prisma.like.create({
-          data,
-        });
-        return { addedLike: true }; // return some object
-      } else {
-        await ctx.prisma.like.delete({
-          where: {
-            userId_tweetId: data,
-          },
-        });
-        return { addedLike: false }; // return some object
+      if (existingLike == null) {
+        await db.insert(like).values(data);
+        return { addedLike: true };
       }
+
+      await db
+        .delete(like)
+        .where(
+          and(eq(like.tweetId, data.tweetId), eq(like.userId, data.userId))
+        );
+
+      return { addedLike: false };
     }),
 });
 
-// break InfiniteFed
+function combineFilters(filters: Array<any | undefined>) {
+  const activeFilters = filters.filter(
+    (filter): filter is any => filter != null
+  );
+
+  if (activeFilters.length === 0) return undefined;
+  if (activeFilters.length === 1) return activeFilters[0];
+
+  return and(...activeFilters);
+}
+
 async function getInfiniteTweets({
-  whereClause,
-  ctx,
-  limit,
+  currentUserId,
   cursor,
+  limit,
+  onlyFollowing = false,
+  userId,
 }: {
-  whereClause?: Prisma.TweetWhereInput;
+  currentUserId?: string;
+  cursor?: { id: string; createdAt: Date };
   limit: number;
-  cursor: { id: string; createdAt: Date } | undefined;
-  ctx: inferAsyncReturnType<typeof createTRPCContext>;
+  onlyFollowing?: boolean;
+  userId?: string;
 }) {
-  const currentUserId = ctx.session?.user.id;
+  await schemaReady;
+  const cursorCreatedAt = cursor?.createdAt.toISOString();
+  const rows = await db
+    .select({
+      content: tweet.content,
+      createdAt: tweet.createdAt,
+      id: tweet.id,
+      likeCount: sql<number>`(
+        select count(*) from ${like} where ${like.tweetId} = ${tweet.id}
+      )`,
+      likedByMe:
+        currentUserId == null
+          ? sql<number>`0`
+          : sql<number>`exists(
+              select 1 from ${like}
+              where ${like.tweetId} = ${tweet.id} and ${like.userId} = ${currentUserId}
+            )`,
+      userId: user.id,
+      userImage: user.image,
+      userName: user.name,
+    })
+    .from(tweet)
+    .innerJoin(user, eq(tweet.userId, user.id))
+    .where(
+      combineFilters([
+        userId == null ? undefined : eq(tweet.userId, userId),
+        currentUserId == null || !onlyFollowing
+          ? undefined
+          : sql`exists(
+              select 1 from ${userFollower}
+              where ${userFollower.followingId} = ${tweet.userId}
+                and ${userFollower.followerId} = ${currentUserId}
+            )`,
+        cursorCreatedAt == null
+          ? undefined
+          : or(
+              lt(tweet.createdAt, cursorCreatedAt),
+              and(
+                eq(tweet.createdAt, cursorCreatedAt),
+                lte(tweet.id, cursor!.id)
+              )
+            ),
+      ])
+    )
+    .orderBy(desc(tweet.createdAt), desc(tweet.id))
+    .limit(limit + 1);
 
-  const data = await ctx.prisma?.tweet.findMany({
-    /**
-     * if want to display 10 items per page
-     * by adding 1 to the limit, can retrieve 11 itemsadn then use
-     * the first 10 items to display on first page
-     */
-    take: limit + 1,
-    cursor: cursor ? { createdAt_id: cursor } : undefined,
-    // some error here, because cant select two orderBy
-    orderBy: [
-      {
-        createdAt: "desc",
-      },
-      {
-        id: "desc",
-      },
-    ],
-    where: whereClause,
-    // and do select for user tweet
-    select: {
-      id: true,
-      content: true,
-      createdAt: true,
-      _count: { select: { likes: true } },
-      likes:
-        currentUserId == null ? false : { where: { userId: currentUserId } },
-      user: {
-        select: { name: true, id: true, image: true },
-      },
-    },
-  });
-  let nextCursor: typeof cursor | undefined;
+  let nextCursor: { id: string; createdAt: Date } | undefined;
 
-  if (data.length > limit) {
-    // in here doing some delete array last data
-    const nextItem = data.pop();
+  if (rows.length > limit) {
+    const nextItem = rows.pop();
 
-    // and if not being null, will be stored in a variable
     if (nextItem != null) {
-      nextCursor = { id: nextItem.id, createdAt: nextItem.createdAt };
+      nextCursor = {
+        createdAt: new Date(nextItem.createdAt),
+        id: nextItem.id,
+      };
     }
   }
 
-  // return data for frontEnd
   return {
-    tweets: data.map((tweet: (typeof data)[number]) => {
-      return {
-        id: tweet.id,
-        content: tweet.content,
-        createdAt: tweet.createdAt,
-        likeCount: tweet._count.likes,
-        user: tweet.user,
-        likedByMe: tweet.likes?.length > 0,
-      };
-    }),
+    tweets: rows.map((row) => ({
+      content: row.content,
+      createdAt: new Date(row.createdAt),
+      id: row.id,
+      likeCount: Number(row.likeCount),
+      likedByMe: Boolean(row.likedByMe),
+      user: {
+        id: row.userId,
+        image: row.userImage,
+        name: row.userName,
+      },
+    })),
     nextCursor,
   };
 }

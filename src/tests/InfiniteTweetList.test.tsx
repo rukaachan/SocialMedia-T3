@@ -10,7 +10,7 @@ vi.mock("next/link", () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
-vi.mock("next-auth/react", () => ({
+vi.mock("~/lib/auth/client", () => ({
   useSession: () => ({
     status: "authenticated",
     data: { user: { id: "user-1" } },

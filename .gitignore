@@ -12,14 +12,20 @@ playwright-report/
 blob-report/
 
 # local planning artifacts
-.sisyphus/
+.sisyphus/*
+!.sisyphus/evidence/
+.sisyphus/evidence/*
+!.sisyphus/evidence/task-1-version-matrix.md
+!.sisyphus/evidence/task-1-version-matrix-audit.md
 
 # database
-/prisma/db.sqlite
-/prisma/db.sqlite-journal
+/src/db/local.db
+/src/db/local-*.db
+/src/db/better-auth-*.db
 
 # next.js
 /.next/
+/.open-next/
 .swc/
 /out/
 next-env.d.ts
@@ -27,7 +33,11 @@ next-env.d.ts
 # production
 /build
 
-# misc
+#PV|# misc
+#ZV|.DS_Store
+#ZT|*.pem
+#MS|# npm/pnpm
+#RQ|.npmrc
 .DS_Store
 *.pem
 
@@ -42,6 +52,8 @@ yarn-error.log*
 # do not commit any .env files to git, except for the .env.example file. https://create.t3.gg/en/usage/env-variables#using-environment-variables
 .env
 .env*.local
+.dev.vars*
+!.dev.vars.example
 
 # vercel
 .vercel

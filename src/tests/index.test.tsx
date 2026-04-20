@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import Home from "~/pages/index";
+import Home from "~/app/page";
 
 type InfiniteQueryResult = {
   data: {
@@ -17,7 +17,7 @@ type InfiniteQueryResult = {
 const useInfiniteQuerySpy =
   vi.fn<(input?: { onlyFollowing?: boolean }) => InfiniteQueryResult>();
 
-vi.mock("next-auth/react", () => ({
+vi.mock("~/lib/auth/client", () => ({
   useSession: () => ({
     status: "authenticated",
     data: { user: { id: "user-1" } },
@@ -53,7 +53,7 @@ vi.mock("~/utils/api", () => ({
   },
 }));
 
-describe("src/pages/index.tsx", () => {
+describe("src/app/page.tsx", () => {
   it("renders authenticated tabs and switches tweet feeds", () => {
     useInfiniteQuerySpy.mockImplementation((input) => ({
       data: {

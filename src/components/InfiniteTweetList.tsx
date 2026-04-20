@@ -1,9 +1,9 @@
 import { useInfiniteScroll } from "~/hooks/useInfiniteScroll";
 import ProfileImage from "./ProfileImage";
 import Link from "next/link";
-import { useSession } from "next-auth/react";
 import { VscHeart, VscHeartFilled } from "react-icons/vsc";
 import IconHoverEffect from "./IconHoverEffect";
+import { useSession } from "~/lib/auth/client";
 import { api } from "~/utils/api";
 import LoadingSpinner from "./LoadingSpinner";
 

@@ -1,9 +1,9 @@
-import { useSession } from "next-auth/react";
 import Button from "./Button";
 import ProfileImage from "./ProfileImage";
 import type { FormEvent } from "react";
 import { useState } from "react";
 import { useAutoResizeTextArea } from "~/hooks/useAutoResizeTextArea";
+import { useSession } from "~/lib/auth/client";
 import { api } from "~/utils/api";
 
 export default function NewTweetForm() {
@@ -25,8 +25,7 @@ function Form() {
   const createTweet = api.tweet.create.useMutation({
     // will take param newTweet
     onSuccess: (newTweet) => {
-      // see value newTweet that from state inputValue
-      // console.log(newTweet);
+      setInputValue("");
 
       setInputValue("");
 

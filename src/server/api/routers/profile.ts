@@ -1,4 +1,9 @@
+import { and, eq, sql } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { db, schemaReady } from "~/db";
+import { tweet, user, userFollower } from "~/db/schema";
+import { rateLimit, RATE_LIMITS } from "~/lib/ratelimit";
 import {
   createTRPCRouter,
   protectedProcedure,
@@ -6,86 +11,97 @@ import {
 } from "~/server/api/trpc";
 
 export const profileRouter = createTRPCRouter({
-  // getById EndPoint TRPC
   getById: publicProcedure
-    .input(
-      z.object(
-        // make object for EndPoint id
-        { id: z.string() }
-      )
-    )
-    // doing with query
+    .input(z.object({ id: z.string() }))
     .query(async ({ input: { id }, ctx }) => {
+      await schemaReady;
       const currentUserId = ctx.session?.user.id;
-
-      // find user by id with unique
-      const profile = await ctx.prisma.user.findUnique({
-        where: { id },
-
-        // be select
-        select: {
-          name: true,
-          image: true,
-          _count: { select: { followers: true, follows: true, tweets: true } }, // must be true for _count
-          followers:
-            currentUserId == null
-              ? undefined
-              : { where: { id: currentUserId } },
-        },
-      });
-
+      const profile = await db.query.user.findFirst({ where: eq(user.id, id) });
       if (profile == null) return;
 
-      // return into for FrontEnd
+      const [followersCountRow, followsCountRow, tweetsCountRow] =
+        await Promise.all([
+          db
+            .select({ count: sql<number>`count(*)` })
+            .from(userFollower)
+            .where(eq(userFollower.followingId, id)),
+          db
+            .select({ count: sql<number>`count(*)` })
+            .from(userFollower)
+            .where(eq(userFollower.followerId, id)),
+          db
+            .select({ count: sql<number>`count(*)` })
+            .from(tweet)
+            .where(eq(tweet.userId, id)),
+        ]);
+
+      const followers =
+        currentUserId == null
+          ? undefined
+          : await db
+              .select({ followerId: userFollower.followerId })
+              .from(userFollower)
+              .where(
+                and(
+                  eq(userFollower.followingId, id),
+                  eq(userFollower.followerId, currentUserId)
+                )
+              )
+              .limit(1);
+
       return {
-        name: profile?.name,
-        image: profile?.image,
-        followersCount: profile?._count.followers,
-        followsCount: profile?._count.follows,
-        tweetsCount: profile?._count.tweets,
-        isFollowing: profile?.followers.length > 0,
+        followersCount: Number(followersCountRow[0]?.count ?? 0),
+        followsCount: Number(followsCountRow[0]?.count ?? 0),
+        image: profile.image,
+        isFollowing: followers!.length > 0,
+        name: profile.name,
+        tweetsCount: Number(tweetsCountRow[0]?.count ?? 0),
       };
     }),
-  // toggleFollow EndPoint TRPC
   toggleFollow: protectedProcedure
-    .input(
-      z.object(
-        // make object for EndPoint userId
-        { userId: z.string() }
-      )
-    )
+    .input(z.object({ userId: z.string() }))
+    .use(async ({ ctx, next }) => {
+      const rateLimitResult = await rateLimit({
+        key: `toggle-follow-${ctx.session.user.id}`,
+        limit: RATE_LIMITS.TOGGLE_FOLLOW.limit,
+        window: RATE_LIMITS.TOGGLE_FOLLOW.window,
+      });
+      if (!rateLimitResult.success) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: `Rate limit exceeded. Try again in ${Math.ceil(
+            (rateLimitResult.resetAt - Date.now()) / 1000
+          )} seconds.`,
+        });
+      }
+      return next({ ctx });
+    })
     .mutation(async ({ input: { userId }, ctx }) => {
-      const currentUserId = ctx.session?.user.id;
-
-      const existingFollow = await ctx.prisma.user.findFirst({
-        where: {
-          id: userId,
-          followers: { some: { id: currentUserId } },
-        },
+      await schemaReady;
+      const currentUserId = ctx.session.user.id;
+      const existingFollow = await db.query.userFollower.findFirst({
+        where: and(
+          eq(userFollower.followingId, userId),
+          eq(userFollower.followerId, currentUserId)
+        ),
       });
 
-      /* 
-      Update the user's followers in the database.
-      If a follower with a specific ID exists, disconnect the user from that follower.
-      If a follower with a specific ID does not exist, connect the user to that follower.
-      Return an object indicating whether a follower was added or not.
-      */
-      let addedFollow;
       if (existingFollow == null) {
-        await ctx.prisma.user.update({
-          where: { id: userId },
-          data: { followers: { connect: { id: currentUserId } } },
-        });
-        addedFollow = true;
-      } else {
-        await ctx.prisma.user.update({
-          where: { id: userId },
-          data: { followers: { disconnect: { id: currentUserId } } },
-        });
-        addedFollow = false;
+        await db
+          .insert(userFollower)
+          .values({ followerId: currentUserId, followingId: userId });
+        return { addedFollow: true };
       }
-      // Revalidation
 
-      return { addedFollow };
+      await db
+        .delete(userFollower)
+        .where(
+          and(
+            eq(userFollower.followingId, userId),
+            eq(userFollower.followerId, currentUserId)
+          )
+        );
+
+      return { addedFollow: false };
     }),
 });

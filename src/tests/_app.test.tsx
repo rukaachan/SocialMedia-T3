@@ -1,23 +1,17 @@
 import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
-import type { Session } from "next-auth";
-import type { AppType } from "next/app";
-import MyApp from "~/pages/_app";
+import type { AppSession } from "~/lib/auth/server";
+import { Providers } from "~/app/providers";
 
 const sessionProviderSpy = vi.fn();
-const pageComponentSpy = vi.fn();
 
-vi.mock("next/head", () => ({
-  default: ({ children }: { children: ReactNode }) => <>{children}</>,
-}));
-
-vi.mock("next-auth/react", () => ({
+vi.mock("~/lib/auth/client", () => ({
   SessionProvider: ({
     children,
     session,
   }: {
     children: ReactNode;
-    session: Session | null;
+    session: AppSession | null;
   }) => {
     sessionProviderSpy(session);
 
@@ -25,46 +19,41 @@ vi.mock("next-auth/react", () => ({
   },
 }));
 
-vi.mock("~/components/SideNav", () => ({
-  SideNav: () => <nav data-testid="side-nav">Side navigation</nav>,
+vi.mock("@tanstack/react-query", () => ({
+  QueryClient: class QueryClient {
+    constructor() {}
+  },
+  QueryClientProvider: ({ children }: { children: ReactNode }) => (
+    <div data-testid="query-client-provider">{children}</div>
+  ),
 }));
 
 vi.mock("~/utils/api", () => ({
   api: {
-    withTRPC: (component: unknown) => component,
+    createClient: vi.fn().mockReturnValue({}),
+    Provider: ({ children }: { children: ReactNode }) => (
+      <div data-testid="trpc-provider">{children}</div>
+    ),
   },
 }));
 
-describe("src/pages/_app.tsx", () => {
-  it("wraps pages with providers and shared shell", () => {
+describe("src/app/providers.tsx", () => {
+  it("wraps children with session and tRPC providers", () => {
     const session = {
       expires: new Date(Date.now() + 60_000).toISOString(),
       user: { id: "user-1" },
-    } as Session;
-
-    const PageComponent = (props: { greeting: string }) => {
-      pageComponentSpy(props);
-
-      return <main>{props.greeting}</main>;
-    };
-
-    const TestedApp = MyApp as AppType<{
-      greeting: string;
-      session: Session | null;
-    }>;
+    } as AppSession;
 
     render(
-      <TestedApp
-        Component={PageComponent}
-        pageProps={{ greeting: "Hello test", session }}
-        router={{} as never}
-      />
+      <Providers session={session}>
+        <main>Test content</main>
+      </Providers>
     );
 
     expect(screen.getByTestId("session-provider")).toBeInTheDocument();
-    expect(screen.getByTestId("side-nav")).toBeInTheDocument();
-    expect(screen.getByText("Hello test")).toBeInTheDocument();
+    expect(screen.getByTestId("trpc-provider")).toBeInTheDocument();
+    expect(screen.getByTestId("query-client-provider")).toBeInTheDocument();
+    expect(screen.getByText("Test content")).toBeInTheDocument();
     expect(sessionProviderSpy).toHaveBeenCalledWith(session);
-    expect(pageComponentSpy).toHaveBeenCalledWith({ greeting: "Hello test" });
   });
 });

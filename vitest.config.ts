@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
+      "next/server": path.resolve(__dirname, "./node_modules/next/server.js"),
       "~": path.resolve(__dirname, "./src"),
     },
   },

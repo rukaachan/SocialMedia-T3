@@ -9,6 +9,14 @@
         "fixStyle": "inline-type-imports"
       }
     ],
+    "max-lines": [
+      "error",
+      {
+        "max": 250,
+        "skipBlankLines": true,
+        "skipComments": true
+      }
+    ],
     "no-unused-vars": [
       "warn",
       {
