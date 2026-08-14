@@ -15,23 +15,49 @@ This app targets Cloudflare Workers through OpenNext.
 Set non-secret config in `wrangler.toml`:
 
 - `APP_BASE_URL`
-- `AUTH_TRUST_HOST=true`
+- `BETTER_AUTH_TRUSTED_ORIGINS` (the deployed app origin)
 - `TURSO_DATABASE_URL`
+- `MEDIA_BUCKET` R2 binding for local, preview, and production
 
 Set secrets with Wrangler so they are exposed as Worker bindings/process env at runtime:
 
 ```bash
-pnpm wrangler secret put AUTH_SECRET --env preview
-pnpm wrangler secret put AUTH_DISCORD_ID --env preview
-pnpm wrangler secret put AUTH_DISCORD_SECRET --env preview
-pnpm wrangler secret put AUTH_GOOGLE_ID --env preview
-pnpm wrangler secret put AUTH_GOOGLE_SECRET --env preview
+pnpm wrangler secret put BETTER_AUTH_SECRET --env preview
+pnpm wrangler secret put DISCORD_CLIENT_ID --env preview
+pnpm wrangler secret put DISCORD_CLIENT_SECRET --env preview
+pnpm wrangler secret put GOOGLE_CLIENT_ID --env preview
+pnpm wrangler secret put GOOGLE_CLIENT_SECRET --env preview
 pnpm wrangler secret put TURSO_AUTH_TOKEN --env preview
 ```
 
 Repeat for `--env production` before the production deploy.
 
 For local preview/runtime checks, copy `.dev.vars.example` to `.dev.vars` (and optionally `.dev.vars.preview` for real preview-environment deploys) and populate the secret values. Keep public/non-secret config in `wrangler.toml` `vars`; Cloudflare treats `vars` as plaintext config and `wrangler secret put` / `.dev.vars` as the secret path. `NEXTJS_ENV=development` keeps `next dev` and `opennextjs-cloudflare preview` aligned with the same local `.env` loading rules.
+
+`file:` Turso URLs are supported by the Node.js local app but not by the Workerd/web libSQL client used in Cloudflare previews. A real `libsql://`, `https://`, or local HTTP Hrana endpoint must therefore override `TURSO_DATABASE_URL` for `pnpm cf:preview`; use `pnpm dev`/`pnpm start` with the checked-in file URL when a remote database is unavailable. The OpenNext bundle supplies the platform Fetch API to libSQL’s Hrana client so preview requests do not fall back to Node’s `http` implementation.
+
+## R2 media bucket
+
+Uploaded avatars and post images are stored in a private R2 bucket through the `MEDIA_BUCKET` binding. The application serves known opaque keys through the same-origin `/api/media/<key>` route, so a public R2 bucket or a separate media hostname is not required.
+
+Create the buckets once:
+
+```bash
+pnpm wrangler r2 bucket create tweeva-media-local
+pnpm wrangler r2 bucket create tweeva-media-local-preview
+pnpm wrangler r2 bucket create tweeva-media-preview
+pnpm wrangler r2 bucket create tweeva-media
+```
+
+The binding names and environment-specific bucket names are checked into `wrangler.toml`. Run type generation after changing them:
+
+```bash
+pnpm cf:typegen
+```
+
+Local `next dev` and `pnpm cf:preview` use Wrangler's local R2 simulation unless remote bindings are explicitly enabled. Preview and production deployments use their respective R2 buckets. Do not place R2 credentials in application environment variables; the Worker binding supplies access.
+
+Cloudflare currently documents a monthly R2 free allowance of 10 GB-month storage, 1 million Class A operations, 10 million Class B operations, and free egress. Writes (`PutObject`) count as Class A and image reads (`GetObject`) count as Class B; usage above the allowance is billed. Review the [R2 pricing documentation](https://developers.cloudflare.com/r2/pricing/) before production promotion.
 
 For Cloudflare dashboard-managed runtime vars/secrets, prefer `opennextjs-cloudflare deploy -- --keep-vars` so deployments do not wipe values that are managed outside the repo.
 
@@ -50,7 +76,7 @@ For Cloudflare dashboard-managed runtime vars/secrets, prefer `opennextjs-cloudf
    pnpm cf:preview
    ```
 
-   This uses `.dev.vars` for local secrets and the top-level `wrangler.toml` `vars` block for non-secret config.
+   This uses `.dev.vars` for local secrets and the top-level `wrangler.toml` `vars` block for non-secret config. Before running it, replace the local file database value with a reachable remote/HTTP Hrana URL (and token), or pass equivalent Wrangler `--var` overrides through the preview command.
 
 4. Deploy the preview environment:
 

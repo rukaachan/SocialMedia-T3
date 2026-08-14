@@ -5,15 +5,20 @@ import process from "node:process";
 const args = process.argv.slice(2);
 
 if (args.length === 0) {
-  throw new Error(
-    "Usage: node scripts/cloudflare/opennext-cloudflare.mjs <command> [...args]"
-  );
+  throw new Error("Usage: node scripts/cloudflare/opennext-cloudflare.mjs <command> [...args]");
 }
 
 const cliArgs = ["opennextjs-cloudflare", ...args];
 
 const envWhitelist = [
   "APP_BASE_URL",
+  "BETTER_AUTH_SECRET",
+  "BETTER_AUTH_URL",
+  "BETTER_AUTH_TRUSTED_ORIGINS",
+  "DISCORD_CLIENT_ID",
+  "DISCORD_CLIENT_SECRET",
+  "GOOGLE_CLIENT_ID",
+  "GOOGLE_CLIENT_SECRET",
   "AUTH_DISCORD_ID",
   "AUTH_DISCORD_SECRET",
   "AUTH_GOOGLE_ID",
@@ -31,6 +36,35 @@ const envWhitelist = [
   "TURSO_AUTH_TOKEN",
   "TURSO_DATABASE_URL",
 ];
+
+/** @returns {NodeJS.ProcessEnv} */
+function getChildEnv() {
+  /** @type {Record<string, string | undefined>} */
+  const childEnv = { ...process.env };
+
+  // Next's build-time page analysis imports the database/auth modules even
+  // though the real values are supplied by Wrangler at Worker runtime.
+  // Keep these non-secret placeholders scoped to OpenNext builds only.
+  if (args[0] === "build") {
+    if (childEnv.TURSO_DATABASE_URL == null) {
+      childEnv.TURSO_DATABASE_URL = "file:/tmp/tweeva-build.db";
+    }
+
+    if (childEnv.BETTER_AUTH_SECRET == null) {
+      childEnv.BETTER_AUTH_SECRET = "build-only-placeholder-build-only-placeholder";
+    }
+
+    if (childEnv.APP_BASE_URL == null) {
+      childEnv.APP_BASE_URL = "http://127.0.0.1:8787";
+    }
+
+    if (childEnv.BETTER_AUTH_TRUSTED_ORIGINS == null) {
+      childEnv.BETTER_AUTH_TRUSTED_ORIGINS = "http://127.0.0.1:8787";
+    }
+  }
+
+  return /** @type {NodeJS.ProcessEnv} */ (childEnv);
+}
 
 /** @param {string} value */
 function shellEscape(value) {
@@ -77,17 +111,19 @@ function run(command, commandArgs, options = {}) {
 }
 
 async function main() {
+  const childEnv = getChildEnv();
+
   if (process.platform !== "win32") {
     const code = await run("pnpm", ["exec", ...cliArgs], {
       cwd: process.cwd(),
-      env: process.env,
+      env: childEnv,
     });
     process.exit(code);
   }
 
   const exportedEnv = envWhitelist
-    .filter((name) => process.env[name] != null && process.env[name] !== "")
-    .map((name) => `export ${name}=${shellEscape(process.env[name] ?? "")}`)
+    .filter((name) => childEnv[name] != null && childEnv[name] !== "")
+    .map((name) => `export ${name}=${shellEscape(childEnv[name] ?? "")}`)
     .join(" && ");
 
   const repoPath = toWslPath(process.cwd());

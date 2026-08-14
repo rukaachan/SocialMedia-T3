@@ -13,6 +13,9 @@ await initOpenNextCloudflareForDev();
 /** @type {import("next").NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Let OpenNext copy libSQL with its Workerd export condition instead of
+  // bundling the Node-native implementation into the Worker.
+  serverExternalPackages: ["@libsql/client", "@libsql/isomorphic-ws"],
   // OpenNext Cloudflare currently expects Next.js i18n routing to stay disabled.
   images: {
     unoptimized: true,

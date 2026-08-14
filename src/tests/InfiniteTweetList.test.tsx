@@ -35,12 +35,26 @@ vi.mock("~/utils/api", () => ({
       tweet: {
         infiniteFeed: { setInfiniteData: vi.fn() },
         infiteProfile: { setInfiniteData: vi.fn() },
+        infiniteReplies: { setInfiniteData: vi.fn() },
+        getById: { setData: vi.fn() },
       },
     }),
     tweet: {
       toggleLike: {
         useMutation: () => ({ isPending: false, mutate: vi.fn() }),
       },
+      update: {
+        useMutation: () => ({ isPending: false, mutate: vi.fn() }),
+      },
+      delete: {
+        useMutation: () => ({ isPending: false, mutate: vi.fn() }),
+      },
+    },
+    bookmark: {
+      toggle: {
+        useMutation: () => ({ isPending: false, mutate: vi.fn() }),
+      },
+      infiniteMine: { setInfiniteData: vi.fn() },
     },
   },
 }));
@@ -78,8 +92,12 @@ describe("src/components/InfiniteTweetList.tsx", () => {
             id: "tweet-1",
             content: "Hello world",
             createdAt: new Date("2024-01-01T00:00:00.000Z"),
+            updatedAt: new Date("2024-01-01T00:00:00.000Z"),
             likeCount: 1,
             likedByMe: false,
+            bookmarkedByMe: false,
+            replyCount: 0,
+            media: [],
             user: { id: "user-2", image: null, name: "Ada" },
           },
         ]}
@@ -87,7 +105,7 @@ describe("src/components/InfiniteTweetList.tsx", () => {
         isLoading={false}
         hasMore
         fetchNewTweets={fetchNewTweets}
-      />
+      />,
     );
 
     expect(observeSpy).toHaveBeenCalledTimes(1);
@@ -95,7 +113,7 @@ describe("src/components/InfiniteTweetList.tsx", () => {
 
     await latestIntersectionCallback?.(
       [{ isIntersecting: true } as IntersectionObserverEntry],
-      {} as IntersectionObserver
+      {} as IntersectionObserver,
     );
 
     expect(fetchNewTweets).toHaveBeenCalledTimes(1);

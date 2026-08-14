@@ -18,10 +18,10 @@ export const env = createEnv({
     TURSO_AUTH_TOKEN: optionalString,
     NODE_ENV: z.enum(["development", "test", "production"]),
     APP_BASE_URL: optionalUrl,
-DISCORD_CLIENT_ID: optionalString,
-DISCORD_CLIENT_SECRET: optionalString,
-GOOGLE_CLIENT_ID: optionalString,
-GOOGLE_CLIENT_SECRET: optionalString,
+    DISCORD_CLIENT_ID: optionalString,
+    DISCORD_CLIENT_SECRET: optionalString,
+    GOOGLE_CLIENT_ID: optionalString,
+    GOOGLE_CLIENT_SECRET: optionalString,
   },
 
   /**

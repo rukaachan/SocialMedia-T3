@@ -1,3 +1,5 @@
+import { bookmarkRouter } from "~/server/api/routers/bookmark";
+import { searchRouter } from "~/server/api/routers/search";
 import { tweetRouter } from "~/server/api/routers/tweet";
 import { createTRPCRouter } from "~/server/api/trpc";
 import { profileRouter } from "./routers/profile";
@@ -10,6 +12,8 @@ import { profileRouter } from "./routers/profile";
 export const appRouter = createTRPCRouter({
   tweet: tweetRouter,
   profile: profileRouter,
+  bookmark: bookmarkRouter,
+  search: searchRouter,
 });
 
 // export type definition of API

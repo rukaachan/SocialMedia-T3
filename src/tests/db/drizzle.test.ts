@@ -6,8 +6,10 @@ import drizzleConfig from "../../../drizzle.config";
 import { db } from "~/db";
 import {
   account,
+  bookmark,
   credential,
   like,
+  mediaAsset,
   passwordResetToken,
   session,
   tweet,
@@ -35,17 +37,50 @@ describe("Drizzle Turso wiring", () => {
     expect(getTableName(tweet)).toBe("tweet");
     expect(getTableName(like)).toBe("like");
     expect(getTableName(userFollower)).toBe("userFollower");
+    expect(getTableName(mediaAsset)).toBe("mediaAsset");
+    expect(getTableName(bookmark)).toBe("bookmark");
   });
 
   it("exposes stable pagination and join columns", () => {
+    expect(Object.keys(getTableColumns(user))).toEqual(
+      expect.arrayContaining(["bio", "avatarKey"]),
+    );
     expect(Object.keys(getTableColumns(tweet))).toEqual(
-      expect.arrayContaining(["id", "userId", "content", "createdAt"])
+      expect.arrayContaining([
+        "id",
+        "userId",
+        "content",
+        "parentId",
+        "createdAt",
+        "updatedAt",
+        "deletedAt",
+      ]),
     );
     expect(Object.keys(getTableColumns(like))).toEqual(
-      expect.arrayContaining(["userId", "tweetId"])
+      expect.arrayContaining(["userId", "tweetId"]),
     );
     expect(Object.keys(getTableColumns(userFollower))).toEqual(
-      expect.arrayContaining(["followingId", "followerId"])
+      expect.arrayContaining(["followingId", "followerId"]),
+    );
+    expect(Object.keys(getTableColumns(mediaAsset))).toEqual(
+      expect.arrayContaining([
+        "ownerId",
+        "tweetId",
+        "objectKey",
+        "purpose",
+        "status",
+        "mimeType",
+        "byteSize",
+        "width",
+        "height",
+        "altText",
+        "createdAt",
+        "attachedAt",
+        "deletedAt",
+      ]),
+    );
+    expect(Object.keys(getTableColumns(bookmark))).toEqual(
+      expect.arrayContaining(["userId", "tweetId", "createdAt"]),
     );
   });
 

@@ -1,5 +1,6 @@
 import { and, eq, isNotNull } from "drizzle-orm";
 import { redirect } from "next/navigation";
+import ProfileEditor from "~/components/ProfileEditor";
 import { AccountLinking } from "~/components/auth/AccountLinking";
 import { account } from "~/db/better-auth-schema";
 import { db } from "~/db";
@@ -25,8 +26,8 @@ export default async function SettingsPage() {
       and(
         eq(account.userId, userId),
         eq(account.providerId, "credential"),
-        isNotNull(account.password)
-      )
+        isNotNull(account.password),
+      ),
     )
     .limit(1);
 
@@ -34,7 +35,7 @@ export default async function SettingsPage() {
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-12">
-      <div className="mx-auto w-full max-w-md">
+      <div className="mx-auto w-full max-w-2xl space-y-6">
         <div className="mb-8">
           <h1 className="text-2xl font-semibold text-slate-900">Settings</h1>
           <p className="mt-1 text-sm text-slate-600">
@@ -43,10 +44,11 @@ export default async function SettingsPage() {
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <AccountLinking
-            linkedProviders={linkedProviders}
-            hasCredentials={hasCredentials}
-          />
+          <ProfileEditor />
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <AccountLinking linkedProviders={linkedProviders} hasCredentials={hasCredentials} />
         </div>
       </div>
     </main>

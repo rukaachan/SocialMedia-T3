@@ -12,16 +12,23 @@ binding = "ASSETS"
 
 [vars]
 APP_BASE_URL = "http://127.0.0.1:8787"
-AUTH_TRUST_HOST = "true"
+BETTER_AUTH_TRUSTED_ORIGINS = "http://127.0.0.1:8787,http://localhost:3000"
 NEXTJS_ENV = "production"
 TURSO_DATABASE_URL = "file:./src/db/local.db"
 
+# Local `next dev`/Wrangler simulation binding. Create the bucket once with:
+# pnpm wrangler r2 bucket create tweeva-media-local
+[[r2_buckets]]
+binding = "MEDIA_BUCKET"
+bucket_name = "tweeva-media-local"
+preview_bucket_name = "tweeva-media-local-preview"
+
 # Runtime secrets must be set with Wrangler, not committed here:
-# - AUTH_SECRET
-# - AUTH_DISCORD_ID
-# - AUTH_DISCORD_SECRET
-# - AUTH_GOOGLE_ID
-# - AUTH_GOOGLE_SECRET
+# - BETTER_AUTH_SECRET
+# - DISCORD_CLIENT_ID
+# - DISCORD_CLIENT_SECRET
+# - GOOGLE_CLIENT_ID
+# - GOOGLE_CLIENT_SECRET
 # - TURSO_AUTH_TOKEN
 
 [env.preview]
@@ -31,9 +38,13 @@ preview_urls = true
 
 [env.preview.vars]
 APP_BASE_URL = "https://<preview-subdomain>.workers.dev"
-AUTH_TRUST_HOST = "true"
+BETTER_AUTH_TRUSTED_ORIGINS = "https://<preview-subdomain>.workers.dev"
 NEXTJS_ENV = "production"
 TURSO_DATABASE_URL = "libsql://<preview-db>.turso.io"
+
+[[env.preview.r2_buckets]]
+binding = "MEDIA_BUCKET"
+bucket_name = "tweeva-media-preview"
 
 [env.production]
 name = "tweeva"
@@ -41,6 +52,10 @@ workers_dev = false
 
 [env.production.vars]
 APP_BASE_URL = "https://<production-domain>"
-AUTH_TRUST_HOST = "true"
+BETTER_AUTH_TRUSTED_ORIGINS = "https://<production-domain>"
 NEXTJS_ENV = "production"
 TURSO_DATABASE_URL = "libsql://<production-db>.turso.io"
+
+[[env.production.r2_buckets]]
+binding = "MEDIA_BUCKET"
+bucket_name = "tweeva-media"

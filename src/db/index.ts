@@ -1,12 +1,14 @@
 import { createClient } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
 import { env } from "~/env.mjs";
+import { fetch as platformFetch } from "~/server/platform/global-fetch";
 import * as schema from "./schema";
 
 const url = env.TURSO_DATABASE_URL;
 
 export const client = createClient({
   url,
+  fetch: platformFetch,
   ...(env.TURSO_AUTH_TOKEN != null && url.startsWith("libsql://")
     ? { authToken: env.TURSO_AUTH_TOKEN }
     : {}),
@@ -41,13 +43,82 @@ const schemaStatements = [
   'CREATE INDEX IF NOT EXISTS "user_follower_follower_idx" ON "userFollower" ("followerId");',
 ];
 
+const featureTableStatements = [
+  'CREATE TABLE IF NOT EXISTS "mediaAsset" ("id" text PRIMARY KEY NOT NULL, "ownerId" text NOT NULL, "tweetId" text, "objectKey" text NOT NULL, "purpose" text NOT NULL, "status" text NOT NULL DEFAULT \'pending\', "mimeType" text NOT NULL, "byteSize" integer NOT NULL, "width" integer NOT NULL, "height" integer NOT NULL, "sortOrder" integer NOT NULL DEFAULT 0, "altText" text, "createdAt" text NOT NULL, "attachedAt" text, "deletedAt" text, FOREIGN KEY ("ownerId") REFERENCES "user"("id") ON DELETE cascade, FOREIGN KEY ("tweetId") REFERENCES "tweet"("id") ON DELETE cascade);',
+  'CREATE UNIQUE INDEX IF NOT EXISTS "media_asset_object_key_idx" ON "mediaAsset" ("objectKey");',
+  'CREATE INDEX IF NOT EXISTS "media_asset_owner_idx" ON "mediaAsset" ("ownerId");',
+  'CREATE INDEX IF NOT EXISTS "media_asset_tweet_idx" ON "mediaAsset" ("tweetId", "sortOrder");',
+  'CREATE INDEX IF NOT EXISTS "media_asset_status_created_at_idx" ON "mediaAsset" ("status", "createdAt");',
+  'CREATE TABLE IF NOT EXISTS "bookmark" ("userId" text NOT NULL, "tweetId" text NOT NULL, "createdAt" text NOT NULL, PRIMARY KEY ("userId", "tweetId"), FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE cascade, FOREIGN KEY ("tweetId") REFERENCES "tweet"("id") ON DELETE cascade);',
+  'CREATE INDEX IF NOT EXISTS "bookmark_user_created_at_idx" ON "bookmark" ("userId", "createdAt");',
+  'CREATE INDEX IF NOT EXISTS "bookmark_tweet_idx" ON "bookmark" ("tweetId");',
+];
+
+function quoteIdentifier(identifier: string) {
+  return `"${identifier.replaceAll('"', '""')}"`;
+}
+
+function isBusyError(error: unknown) {
+  return (
+    (typeof error === "object" && error != null && "code" in error ? String(error.code) : "") ===
+      "SQLITE_BUSY" ||
+    (error instanceof Error && error.message.includes("SQLITE_BUSY"))
+  );
+}
+
+async function executeSchemaStatement(statement: string) {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await client.execute(statement);
+    } catch (error) {
+      if (!isBusyError(error) || attempt >= 6) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 25 * 2 ** attempt));
+    }
+  }
+}
+
+async function ensureColumn(tableName: string, columnName: string, definition: string) {
+  const columns = await executeSchemaStatement(`PRAGMA table_info(${quoteIdentifier(tableName)})`);
+  const exists = columns.rows.some((column) => String(column.name) === columnName);
+
+  if (!exists) {
+    try {
+      await executeSchemaStatement(
+        `ALTER TABLE ${quoteIdentifier(tableName)} ADD COLUMN ${definition}`,
+      );
+    } catch (error) {
+      // Multiple local Next.js workers can observe the missing column together.
+      // Another worker may have added it while this one was waiting on SQLite.
+      if (!(error instanceof Error) || !error.message.includes("duplicate column name")) {
+        throw error;
+      }
+    }
+  }
+}
+
 export const schemaReady = (async () => {
   if (url.startsWith("file:")) {
-    await client.execute("PRAGMA foreign_keys = ON;");
+    await executeSchemaStatement("PRAGMA foreign_keys = ON;");
   }
 
   for (const statement of schemaStatements) {
-    await client.execute(statement);
+    await executeSchemaStatement(statement);
+  }
+
+  // These additive columns keep the runtime bootstrap safe for existing
+  // legacy databases. The checked-in Drizzle migration remains authoritative
+  // for deployed environments and records the same compatibility work.
+  await ensureColumn("user", "bio", '"bio" text');
+  await ensureColumn("user", "avatarKey", '"avatarKey" text');
+  await ensureColumn("tweet", "parentId", '"parentId" text');
+  await ensureColumn("tweet", "updatedAt", "\"updatedAt\" text NOT NULL DEFAULT ''");
+  await ensureColumn("tweet", "deletedAt", '"deletedAt" text');
+  await executeSchemaStatement(
+    'UPDATE "tweet" SET "updatedAt" = "createdAt" WHERE "updatedAt" = \'\' OR "updatedAt" IS NULL',
+  );
+
+  for (const statement of featureTableStatements) {
+    await executeSchemaStatement(statement);
   }
 })();
 

@@ -1,0 +1,10 @@
+allowBuilds:
+  "@prisma/client": set this to true or false
+  "@prisma/engines": set this to true or false
+  esbuild: set this to true or false
+  prisma: set this to true or false
+  sharp: set this to true or false
+  workerd: set this to true or false
+minimumReleaseAgeExclude:
+  - miniflare@5.20260804.0-alpha
+  - wrangler@4.120.1

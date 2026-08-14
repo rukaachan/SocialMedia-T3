@@ -11,17 +11,12 @@ test-results/
 playwright-report/
 blob-report/
 
-# local planning artifacts
-.sisyphus/*
-!.sisyphus/evidence/
-.sisyphus/evidence/*
-!.sisyphus/evidence/task-1-version-matrix.md
-!.sisyphus/evidence/task-1-version-matrix-audit.md
-
 # database
 /src/db/local.db
+/src/db/local.db-*
 /src/db/local-*.db
 /src/db/better-auth-*.db
+/src/db/better-auth-*.db-*
 
 # next.js
 /.next/
@@ -29,6 +24,10 @@ blob-report/
 .swc/
 /out/
 next-env.d.ts
+
+# Cloudflare / Wrangler
+/.wrangler/
+cloudflare-env.d.ts
 
 # production
 /build

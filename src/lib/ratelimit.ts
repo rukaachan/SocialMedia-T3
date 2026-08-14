@@ -143,8 +143,15 @@ export const RATE_LIMITS = {
 
   // API endpoints
   CREATE_TWEET: { limit: 10, window: 60 * 1000 }, // 10 tweets per minute
+  UPDATE_TWEET: { limit: 20, window: 60 * 1000 }, // 20 tweet edits per minute
+  DELETE_TWEET: { limit: 10, window: 60 * 1000 }, // 10 tweet deletes per minute
+  CREATE_REPLY: { limit: 20, window: 60 * 1000 }, // 20 replies per minute
+  TOGGLE_BOOKMARK: { limit: 30, window: 60 * 1000 }, // 30 bookmark operations per minute
+  SEARCH: { limit: 60, window: 60 * 1000 }, // 60 bounded searches per minute
+  UPLOAD_MEDIA: { limit: 20, window: 60 * 1000 }, // 20 image uploads per minute
   TOGGLE_LIKE: { limit: 30, window: 60 * 1000 }, // 30 likes per minute
   TOGGLE_FOLLOW: { limit: 20, window: 60 * 1000 }, // 20 follows per minute
+  UPDATE_PROFILE: { limit: 10, window: 60 * 1000 }, // 10 profile updates per minute
   UNLINK_PROVIDER: { limit: 10, window: 60 * 1000 }, // 10 unlink attempts per minute
 
   // General

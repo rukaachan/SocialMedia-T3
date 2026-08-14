@@ -4,12 +4,15 @@ Tweeva is a minimal social app for posting short updates, following profiles, an
 
 ## Overview
 
-- create an account with Discord authentication
-- post tweets
-- like tweets
+- create an account with email/password, Discord, or Google authentication
+- edit a profile name, bio, and avatar with OAuth-image fallback
+- post text and up to four validated, alt-text-described images
+- like, bookmark, edit, and soft-delete owned posts
+- reply in single-level threads
 - follow other users
 - browse recent and following feeds
-- view user profiles
+- search people and posts
+- view user profiles and saved bookmarks
 
 ## Stack
 
@@ -20,15 +23,21 @@ Tweeva is a minimal social app for posting short updates, following profiles, an
 - tRPC
 - Tailwind CSS
 - Cloudflare Workers (OpenNext)
+- Cloudflare R2 for private media storage and same-origin delivery
 
 ## Security controls
 
 Rate-limited mutation paths (in-memory limiter, per user):
 
-- `tweet.create` -> `RATE_LIMITS.CREATE_TWEET` (10/min)
-- `tweet.toggleLike` -> `RATE_LIMITS.TOGGLE_LIKE` (30/min)
-- `profile.toggleFollow` -> `RATE_LIMITS.TOGGLE_FOLLOW` (20/min)
+- post create/edit/delete, replies, likes, bookmarks, profile edits, and media uploads
 - `POST /api/auth/unlink` -> `RATE_LIMITS.UNLINK_PROVIDER` (10/min)
+
+Media controls:
+
+- JPEG, PNG, and WebP only; 5 MB per file; server-side signature and dimension validation
+- opaque R2 object keys, owner checks, pending-to-attached metadata, cleanup on failure, and deleted-object delivery blocking
+- same-origin checks on upload/cleanup mutations and safe image response headers
+- user-provided post alt text and stable dimensions/lazy loading in galleries
 
 CSRF protections:
 
@@ -47,12 +56,23 @@ CSRF protections:
    ```bash
    pnpm db:drizzle:migrate
    ```
-4. Start the app:
+4. For local media development, create the simulated R2 bindings once:
+   ```bash
+   pnpm wrangler r2 bucket create tweeva-media-local
+   pnpm wrangler r2 bucket create tweeva-media-local-preview
+   ```
+5. Start the app:
    ```bash
    pnpm dev
    ```
 
 Open `http://localhost:3000`.
+
+Inspect the configured database shape without reading user rows:
+
+```bash
+pnpm db:inspect
+```
 
 ## Cloudflare Workers deployment
 
@@ -75,9 +95,14 @@ Set these in your Cloudflare Workers dashboard or via `wrangler secret put`:
 - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`
 - `TURSO_DATABASE_URL` / `TURSO_AUTH_TOKEN`
 
+### Required R2 binding
+
+- `MEDIA_BUCKET` is configured in `wrangler.toml`; it is a Worker binding, not an application secret.
+- Bucket creation, local simulation, preview/production names, and free-tier limits are documented in [`docs/cloudflare-workers.md`](./docs/cloudflare-workers.md).
+
 ## Database
 
-Turso provides edge-replicated SQLite via libsql. Run migrations:
+Turso provides edge-replicated SQLite via libSQL. Media bytes live in R2; Turso stores media ownership/metadata and post/profile relationships. Run migrations:
 
 ```bash
 pnpm db:drizzle:migrate

@@ -106,7 +106,13 @@ describe("src/server/api/routers/profile.ts", () => {
 
     const anonymousCaller = createCaller(null);
 
-    await expect(anonymousCaller.profile.getById({ id: target.id })).rejects.toThrow(/length/);
+    await expect(anonymousCaller.profile.getById({ id: target.id })).resolves.toMatchObject({
+      name: "target",
+      followersCount: 1,
+      followsCount: 1,
+      tweetsCount: 2,
+      isFollowing: false,
+    });
 
     await prisma.user.update({
       where: { id: target.id },
@@ -124,6 +130,27 @@ describe("src/server/api/routers/profile.ts", () => {
       isFollowing: true,
     });
   }, 20_000);
+
+  it("updates profile basics while preserving the OAuth image fallback", async () => {
+    const target = await createUser("before");
+    const caller = createCaller(createSession(target.id));
+
+    const updated = await caller.profile.updateMe({
+      name: "after",
+      bio: "A short profile bio",
+    });
+    expect(updated).toMatchObject({
+      name: "after",
+      bio: "A short profile bio",
+      image: `https://example.com/${target.id}.png`,
+      hasCustomAvatar: false,
+    });
+
+    await expect(caller.profile.getMe()).resolves.toMatchObject({
+      name: "after",
+      bio: "A short profile bio",
+    });
+  });
 
   it("connects and disconnects followers through toggleFollow", async () => {
     const target = await createUser("target");

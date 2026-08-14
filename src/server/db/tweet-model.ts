@@ -10,6 +10,7 @@ export const tweetModel = {
     const record = {
       content: (data.content as string | undefined) ?? "",
       createdAt: data.createdAt as string,
+      updatedAt: (data.updatedAt as string | undefined) ?? (data.createdAt as string),
       id: getId(data.id),
       userId: data.userId as string,
     };

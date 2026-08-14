@@ -8,6 +8,13 @@
       "when": 1774265587868,
       "tag": "0000_dark_starhawk",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1786423097327,
+      "tag": "0001_powerful_scrambler",
+      "breakpoints": true
     }
   ]
 }
